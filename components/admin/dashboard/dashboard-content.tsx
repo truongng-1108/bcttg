@@ -1,15 +1,104 @@
 "use client"
 
-import { FileText, Users, Music, FolderOpen, Eye, Edit3, Star } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Edit3, Eye, FileText, FolderOpen, Music, RefreshCcw, Star, Users } from "lucide-react"
 import { StatsCard } from "./stats-card"
 import { RecentActivity } from "./recent-activity"
-import { ContentChart, CategoryChart, AccessChart } from "./quick-stats"
-import { LotusDivider } from "../decorations/lotus-decoration"
+import { AccessChart, CategoryChart, ContentChart } from "./quick-stats"
+import {
+  getDashboardOverview,
+  type DashboardOverview,
+  type DashboardPendingItem,
+  type DashboardSystemStatus,
+} from "@/lib/admin-api"
+import { Button } from "@/components/ui/button"
+
+const fallbackSystemStatuses: DashboardSystemStatus[] = [
+  { label: "Co so du lieu", status: "active", detail: "Hoat dong on dinh" },
+  { label: "Bo nho dem", status: "active", detail: "Dang theo doi" },
+  { label: "Sao luu tu dong", status: "warning", detail: "Can kiem tra lich backup" },
+]
+
+const fallbackPendingItems: DashboardPendingItem[] = [
+  {
+    id: "1",
+    title: "Tran danh Duong 9 - Nam Lao",
+    type: "Truyen thong",
+    author: "N/A",
+    date: "-",
+    status: "pending",
+  },
+]
+
+function formatNumber(value: number): string {
+  return value.toLocaleString("vi-VN")
+}
+
+function formatLastUpdated(date: Date): string {
+  return new Intl.DateTimeFormat("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
+}
 
 export function DashboardContent() {
+  const [overview, setOverview] = useState<DashboardOverview | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null)
+
+  const fetchOverview = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await getDashboardOverview()
+      setOverview(response)
+      setLastUpdatedAt(new Date())
+    } catch (apiError) {
+      const message =
+        apiError instanceof Error ? apiError.message : "Khong tai duoc du lieu dashboard."
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void fetchOverview()
+  }, [])
+
+  const summary = overview?.summary ?? {
+    totalPosts: 0,
+    totalProfiles: 0,
+    totalSongs: 0,
+    totalAccounts: 0,
+    viewsToday: 0,
+    editsToday: 0,
+  }
+
+  const contentChartData = useMemo(
+    () => (overview?.monthlyContent ?? []).map((item) => ({ name: item.label, value: item.value })),
+    [overview],
+  )
+  const categoryChartData = useMemo(
+    () => (overview?.contentDistribution ?? []).map((item) => ({ name: item.label, value: item.value })),
+    [overview],
+  )
+  const accessChartData = useMemo(
+    () => (overview?.weeklyVisits ?? []).map((item) => ({ name: item.label, value: item.value })),
+    [overview],
+  )
+
+  const systemStatuses = overview?.systemStatuses?.length
+    ? overview.systemStatuses
+    : fallbackSystemStatuses
+  const pendingItems = overview?.pendingItems?.length ? overview.pendingItems : fallbackPendingItems
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between rounded-md border border-border bg-card p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-accent bg-accent/10">
@@ -17,170 +106,134 @@ export function DashboardContent() {
           </div>
           <div>
             <h1 className="text-lg font-bold uppercase tracking-wide text-primary">
-              Dashboard - Báo cáo & Thống kê
+              Dashboard - Bao cao va thong ke
             </h1>
             <p className="text-sm text-muted-foreground">
-              Tổng quan hoạt động hệ thống Sổ Tay Điện Tử Giáo Dục Truyền Thống
+              Tong quan hoat dong he thong quan tri.
             </p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs text-muted-foreground">Cập nhật lần cuối</p>
+          <p className="text-xs text-muted-foreground">Cap nhat lan cuoi</p>
           <p className="text-sm font-semibold text-foreground">
-            27/01/2026 - 14:30
+            {lastUpdatedAt ? formatLastUpdated(lastUpdatedAt) : "--"}
           </p>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {error ? (
+        <div className="flex items-center justify-between rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={() => void fetchOverview()}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Thu lai
+          </Button>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatsCard
-          title="Tổng bài viết"
-          value="156"
+          title="Tong bai viet"
+          value={formatNumber(summary.totalPosts)}
           icon={FileText}
-          trend={{ value: 12, isPositive: true }}
-          description="so với tháng trước"
           variant="primary"
         />
         <StatsCard
-          title="Hồ sơ dữ liệu"
-          value="89"
+          title="Ho so du lieu"
+          value={formatNumber(summary.totalProfiles)}
           icon={FolderOpen}
-          trend={{ value: 8, isPositive: true }}
-          description="so với tháng trước"
           variant="secondary"
         />
-        <StatsCard
-          title="Ca khúc"
-          value="24"
-          icon={Music}
-          description="trong thư viện"
-          variant="accent"
-        />
-        <StatsCard
-          title="Tài khoản"
-          value="42"
-          icon={Users}
-          trend={{ value: 5, isPositive: true }}
-          description="đang hoạt động"
-        />
-        <StatsCard
-          title="Lượt xem hôm nay"
-          value="1,247"
-          icon={Eye}
-          trend={{ value: 23, isPositive: true }}
-          description="so với hôm qua"
-        />
-        <StatsCard
-          title="Chỉnh sửa hôm nay"
-          value="18"
-          icon={Edit3}
-          description="thao tác"
-        />
+        <StatsCard title="Ca khuc" value={formatNumber(summary.totalSongs)} icon={Music} variant="accent" />
+        <StatsCard title="Tai khoan" value={formatNumber(summary.totalAccounts)} icon={Users} />
+        <StatsCard title="Luot xem hom nay" value={formatNumber(summary.viewsToday)} icon={Eye} />
+        <StatsCard title="Chinh sua hom nay" value={formatNumber(summary.editsToday)} icon={Edit3} />
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ContentChart />
-        <CategoryChart />
-        <AccessChart />
-      </div>
-
-      {/* Activity & Quick Access */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RecentActivity />
-
-        {/* System Status */}
-        <div className="rounded-md border border-border bg-card shadow-sm">
-          <div className="border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold text-foreground">
-              Trạng thái hệ thống
-            </h3>
+      {isLoading ? (
+        <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
+          Dang tai du lieu dashboard...
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ContentChart data={contentChartData} />
+            <CategoryChart data={categoryChartData} />
+            <AccessChart data={accessChartData} />
           </div>
-          <div className="divide-y divide-border">
-            <StatusItem
-              label="Cơ sở dữ liệu"
-              status="active"
-              detail="Hoạt động ổn định"
-            />
-            <StatusItem
-              label="Bộ nhớ đệm"
-              status="active"
-              detail="85% dung lượng"
-            />
-            <StatusItem
-              label="Sao lưu tự động"
-              status="active"
-              detail="Lần cuối: 27/01/2026 06:00"
-            />
-            <StatusItem
-              label="Bảo mật"
-              status="active"
-              detail="Đã bật xác thực 2 lớp"
-            />
-            <StatusItem
-              label="SSL/TLS"
-              status="active"
-              detail="Chứng chỉ còn 89 ngày"
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* Pending Items */}
-      <div className="rounded-md border border-border bg-card shadow-sm">
-        <div className="border-b border-border px-4 py-3">
-          <h3 className="text-sm font-semibold text-foreground">
-            Nội dung chờ duyệt
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                  Tiêu đề
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                  Loại
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                  Người tạo
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                  Ngày tạo
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                  Trạng thái
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              <PendingRow
-                title="Trận đánh Đường 9 - Nam Lào"
-                type="Truyền thống"
-                author="Thượng úy Lê Văn C"
-                date="26/01/2026"
-                status="pending"
-              />
-              <PendingRow
-                title="Hồ sơ Thiếu tướng Nguyễn Văn E"
-                type="Hồ sơ"
-                author="Đại úy Trần Văn F"
-                date="25/01/2026"
-                status="pending"
-              />
-              <PendingRow
-                title="Ca khúc kỷ niệm 60 năm"
-                type="Ca khúc"
-                author="Trung úy Phạm Văn G"
-                date="24/01/2026"
-                status="review"
-              />
-            </tbody>
-          </table>
-        </div>
-      </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <RecentActivity activities={overview?.recentActivities ?? []} />
+
+            <div className="rounded-md border border-border bg-card shadow-sm">
+              <div className="border-b border-border px-4 py-3">
+                <h3 className="text-sm font-semibold text-foreground">Trang thai he thong</h3>
+              </div>
+              <div className="divide-y divide-border">
+                {systemStatuses.map((item, index) => (
+                  <StatusItem
+                    key={`${item.label}-${index}`}
+                    label={item.label}
+                    status={item.status}
+                    detail={item.detail}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-border bg-card shadow-sm">
+            <div className="border-b border-border px-4 py-3">
+              <h3 className="text-sm font-semibold text-foreground">Noi dung cho duyet</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
+                      Tieu de
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
+                      Loai
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
+                      Nguoi tao
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
+                      Ngay tao
+                    </th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
+                      Trang thai
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pendingItems.map((item) => (
+                    <PendingRow
+                      key={item.id}
+                      title={item.title}
+                      type={item.type}
+                      author={item.author}
+                      date={item.date}
+                      status={item.status}
+                    />
+                  ))}
+                  {pendingItems.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-4 text-sm text-muted-foreground"
+                      >
+                        Khong co du lieu.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -225,8 +278,8 @@ function PendingRow({
   status: "pending" | "review"
 }) {
   const statusLabels = {
-    pending: { label: "Chờ duyệt", className: "bg-[#F57C00]/10 text-[#F57C00]" },
-    review: { label: "Đang xem xét", className: "bg-info/10 text-info" },
+    pending: { label: "Cho duyet", className: "bg-[#F57C00]/10 text-[#F57C00]" },
+    review: { label: "Dang xem xet", className: "bg-info/10 text-info" },
   }
 
   const s = statusLabels[status]
@@ -238,11 +291,7 @@ function PendingRow({
       <td className="px-4 py-3 text-sm text-muted-foreground">{author}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{date}</td>
       <td className="px-4 py-3">
-        <span
-          className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${s.className}`}
-        >
-          {s.label}
-        </span>
+        <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${s.className}`}>{s.label}</span>
       </td>
     </tr>
   )

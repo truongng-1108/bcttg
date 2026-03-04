@@ -68,8 +68,8 @@ export function DataTable<T extends { id: string | number }>({
   const [showFilters, setShowFilters] = useState(false)
 
   const total = totalItems ?? data.length
-  const totalPages = Math.ceil(total / pageSize)
-  const startItem = (currentPage - 1) * pageSize + 1
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const startItem = total === 0 ? 0 : (currentPage - 1) * pageSize + 1
   const endItem = Math.min(currentPage * pageSize, total)
 
   const handleSearch = (value: string) => {

@@ -16,7 +16,12 @@ import {
   Line,
 } from "recharts"
 
-const contentData = [
+export interface ChartPoint {
+  name: string
+  value: number
+}
+
+const fallbackContentData: ChartPoint[] = [
   { name: "T1", value: 45 },
   { name: "T2", value: 52 },
   { name: "T3", value: 48 },
@@ -31,16 +36,15 @@ const contentData = [
   { name: "T12", value: 91 },
 ]
 
-// Màu đỏ - vàng - nâu (không xanh hiện đại)
-const categoryData = [
-  { name: "Truyền thống", value: 35, color: "#C62828" },
-  { name: "Nét tiêu biểu", value: 28, color: "#B71C1C" },
-  { name: "Hồ sơ thủ trưởng", value: 15, color: "#C9A227" },
-  { name: "Hồ sơ chiến sĩ", value: 45, color: "#D4A574" },
-  { name: "Ca khúc", value: 22, color: "#8B4513" },
+const fallbackCategoryData: ChartPoint[] = [
+  { name: "Truyen thong", value: 35 },
+  { name: "Net tieu bieu", value: 28 },
+  { name: "Ho so thu truong", value: 15 },
+  { name: "Ho so chien si", value: 45 },
+  { name: "Ca khuc", value: 22 },
 ]
 
-const accessData = [
+const fallbackAccessData: ChartPoint[] = [
   { name: "T2", value: 120 },
   { name: "T3", value: 145 },
   { name: "T4", value: 132 },
@@ -50,22 +54,37 @@ const accessData = [
   { name: "CN", value: 98 },
 ]
 
-export function ContentChart() {
+const fallbackCategoryColors = [
+  "#C62828",
+  "#B71C1C",
+  "#C9A227",
+  "#D4A574",
+  "#8B4513",
+  "#1565C0",
+  "#2E7D32",
+]
+
+function withCategoryColors(data: ChartPoint[]) {
+  return data.map((item, index) => ({
+    ...item,
+    color: fallbackCategoryColors[index % fallbackCategoryColors.length],
+  }))
+}
+
+export function ContentChart({ data = fallbackContentData }: { data?: ChartPoint[] }) {
   return (
     <div className="rounded-md border border-border bg-card p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">
-        Nội dung theo tháng
-      </h3>
+      <h3 className="mb-4 text-sm font-semibold text-foreground">Noi dung theo thang</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={contentData}>
+          <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#D5D0C4" />
-            <XAxis 
-              dataKey="name" 
+            <XAxis
+              dataKey="name"
               tick={{ fontSize: 12, fill: "#5C5C5C" }}
               axisLine={{ stroke: "#D5D0C4" }}
             />
-            <YAxis 
+            <YAxis
               tick={{ fontSize: 12, fill: "#5C5C5C" }}
               axisLine={{ stroke: "#D5D0C4" }}
             />
@@ -85,17 +104,17 @@ export function ContentChart() {
   )
 }
 
-export function CategoryChart() {
+export function CategoryChart({ data = fallbackCategoryData }: { data?: ChartPoint[] }) {
+  const chartData = withCategoryColors(data)
+
   return (
     <div className="rounded-md border border-border bg-card p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">
-        Phân loại nội dung
-      </h3>
+      <h3 className="mb-4 text-sm font-semibold text-foreground">Phan loai noi dung</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={categoryData}
+              data={chartData}
               cx="50%"
               cy="50%"
               innerRadius={50}
@@ -103,7 +122,7 @@ export function CategoryChart() {
               paddingAngle={2}
               dataKey="value"
             >
-              {categoryData.map((entry) => (
+              {chartData.map((entry) => (
                 <Cell key={entry.name} fill={entry.color} />
               ))}
             </Pie>
@@ -117,9 +136,7 @@ export function CategoryChart() {
             />
             <Legend
               wrapperStyle={{ fontSize: "12px" }}
-              formatter={(value) => (
-                <span className="text-foreground">{value}</span>
-              )}
+              formatter={(value) => <span className="text-foreground">{value}</span>}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -128,22 +145,20 @@ export function CategoryChart() {
   )
 }
 
-export function AccessChart() {
+export function AccessChart({ data = fallbackAccessData }: { data?: ChartPoint[] }) {
   return (
     <div className="rounded-md border border-border bg-card p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">
-        Lượt truy cập tuần này
-      </h3>
+      <h3 className="mb-4 text-sm font-semibold text-foreground">Luot truy cap tuan nay</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={accessData}>
+          <LineChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#D5D0C4" />
-            <XAxis 
-              dataKey="name" 
+            <XAxis
+              dataKey="name"
               tick={{ fontSize: 12, fill: "#5C5C5C" }}
               axisLine={{ stroke: "#D5D0C4" }}
             />
-            <YAxis 
+            <YAxis
               tick={{ fontSize: 12, fill: "#5C5C5C" }}
               axisLine={{ stroke: "#D5D0C4" }}
             />

@@ -9,9 +9,12 @@ import { LotusDecoration } from "./decorations/lotus-decoration"
 
 interface AdminLayoutProps {
   children: React.ReactNode
+  userPhone: string
+  userRoles: string[]
+  onLogout: () => void
 }
 
-export function AdminLayout({ children }: AdminLayoutProps) {
+export function AdminLayout({ children, userPhone, userRoles, onLogout }: AdminLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
@@ -37,6 +40,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         {/* Header cố định trên cùng */}
         <AdminHeader 
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+          userPhone={userPhone}
+          userRoles={userRoles}
+          onLogout={onLogout}
         />
         
         {/* Nội dung cuộn độc lập */}

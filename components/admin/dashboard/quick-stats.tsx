@@ -37,11 +37,11 @@ const fallbackContentData: ChartPoint[] = [
 ]
 
 const fallbackCategoryData: ChartPoint[] = [
-  { name: "Truyen thong", value: 35 },
-  { name: "Net tieu bieu", value: 28 },
-  { name: "Ho so thu truong", value: 15 },
-  { name: "Ho so chien si", value: 45 },
-  { name: "Ca khuc", value: 22 },
+  { name: "Truyền thống", value: 35 },
+  { name: "Nét tiêu biểu", value: 28 },
+  { name: "Hồ sơ thủ trưởng", value: 15 },
+  { name: "Hồ sơ chiến sĩ", value: 45 },
+  { name: "Ca khúc", value: 22 },
 ]
 
 const fallbackAccessData: ChartPoint[] = [
@@ -74,7 +74,7 @@ function withCategoryColors(data: ChartPoint[]) {
 export function ContentChart({ data = fallbackContentData }: { data?: ChartPoint[] }) {
   return (
     <div className="rounded-md border border-border bg-card p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">Noi dung theo thang</h3>
+      <h3 className="mb-4 text-sm font-semibold text-foreground">Nội dung theo tháng</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data}>
@@ -109,7 +109,7 @@ export function CategoryChart({ data = fallbackCategoryData }: { data?: ChartPoi
 
   return (
     <div className="rounded-md border border-border bg-card p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">Phan loai noi dung</h3>
+      <h3 className="mb-4 text-sm font-semibold text-foreground">Phân loại nội dung</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -148,7 +148,7 @@ export function CategoryChart({ data = fallbackCategoryData }: { data?: ChartPoi
 export function AccessChart({ data = fallbackAccessData }: { data?: ChartPoint[] }) {
   return (
     <div className="rounded-md border border-border bg-card p-4 shadow-sm">
-      <h3 className="mb-4 text-sm font-semibold text-foreground">Luot truy cap tuan nay</h3>
+      <h3 className="mb-4 text-sm font-semibold text-foreground">Lượt truy cập tuần này</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>

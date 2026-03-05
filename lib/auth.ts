@@ -32,18 +32,15 @@ export interface AuthSession {
   expiresAt: string
 }
 
-const DEFAULT_LOGIN_PATH = "/api/v1/auth/login"
 const DEFAULT_STORAGE_KEY = "bcttg_admin_session"
+const LOGIN_PATH = "/api/v1/auth/login"
 
 function getApiBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/+$/, "")
 }
 
 function getLoginPath(): string {
-  const configuredPath =
-    (process.env.NEXT_PUBLIC_AUTH_LOGIN_PATH ?? DEFAULT_LOGIN_PATH).trim() ||
-    DEFAULT_LOGIN_PATH
-  return configuredPath.startsWith("/") ? configuredPath : `/${configuredPath}`
+  return LOGIN_PATH
 }
 
 function getSessionStorageKey(): string {
@@ -106,8 +103,8 @@ export async function loginAdmin(
   }
 
   const fallbackErrorMessage = response.status === 401
-    ? "Sai thong tin dang nhap."
-    : "Dang nhap that bai, vui long thu lai."
+    ? "Sai thông tin đăng nhập."
+    : "Đăng nhập thất bại, vui lòng thử lại."
 
   if (!response.ok || !payload?.success || !payload.data) {
     throw new Error(parseApiErrorMessage(payload) ?? fallbackErrorMessage)
@@ -115,7 +112,7 @@ export async function loginAdmin(
 
   const { accessToken, tokenType, expiresInMinutes, roles } = payload.data
   if (!isNonEmptyString(accessToken)) {
-    throw new Error("Khong nhan duoc access token tu API.")
+    throw new Error("Không nhận được access token từ API.")
   }
 
   const safeExpiresInMinutes =

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { AdminLoginCredentials } from "@/lib/auth"
+import { toast } from "sonner"
 
 interface AdminLoginFormProps {
   onLogin: (credentials: AdminLoginCredentials) => Promise<void>
@@ -15,15 +16,13 @@ interface AdminLoginFormProps {
 export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setError(null)
 
     if (!phone.trim() || !password) {
-      setError("Vui long nhap day du so dien thoai va mat khau.")
+      toast.error("Vui lòng nhập đầy đủ số điện thoại và mật khẩu.")
       return
     }
 
@@ -36,8 +35,8 @@ export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
     } catch (loginError) {
       const errorMessage = loginError instanceof Error
         ? loginError.message
-        : "Dang nhap that bai, vui long thu lai."
-      setError(errorMessage)
+        : "Đăng nhập thất bại, vui lòng thử lại."
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -50,15 +49,15 @@ export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <CardTitle className="text-xl">Dang nhap quan tri</CardTitle>
+          <CardTitle className="text-xl">Đăng nhập quản trị</CardTitle>
           <CardDescription>
-            Su dung tai khoan admin de truy cap trang quan ly.
+            Sử dụng tài khoản admin để truy cập trang quản lý.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">So dien thoai</Label>
+              <Label htmlFor="phone">Số điện thoại</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -71,38 +70,32 @@ export function AdminLoginForm({ onLogin }: AdminLoginFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Mat khau</Label>
+              <Label htmlFor="password">Mật khẩu</Label>
               <Input
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                placeholder="Nhap mat khau"
+                placeholder="Nhập mật khẩu"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 disabled={isSubmitting}
               />
             </div>
 
-            {error ? (
-              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
-            ) : null}
-
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Dang xu ly...
+                  Đang xử lý...
                 </>
               ) : (
-                "Dang nhap"
+                "Đăng nhập"
               )}
             </Button>
           </form>
 
           <p className="mt-4 text-xs text-muted-foreground">
-            Tai khoan seed: 0900000001 / Admin@2026
+            Tài khoản seed: 0900000001 / Admin@2026
           </p>
         </CardContent>
       </Card>

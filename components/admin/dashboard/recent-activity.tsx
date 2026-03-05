@@ -5,18 +5,18 @@ import type { DashboardRecentActivity } from "@/lib/admin-api"
 const fallbackActivities: DashboardRecentActivity[] = [
   {
     id: "1",
-    action: "Cap nhat noi dung",
-    target: "Lich su hinh thanh Binh chung",
+    action: "Cập nhật nội dung",
+    target: "Lịch sử hình thành Binh chủng",
     user: "Admin",
-    timestamp: "10 phut truoc",
+    timestamp: "10 phút trước",
     type: "content",
   },
   {
     id: "2",
-    action: "Them moi ho so",
-    target: "Thieu tuong Tran Van B",
-    user: "Quan tri vien",
-    timestamp: "25 phut truoc",
+    action: "Thêm mới hồ sơ",
+    target: "Thiếu tướng Trần Văn B",
+    user: "Quản trị viên",
+    timestamp: "25 phút trước",
     type: "profile",
   },
 ]
@@ -45,7 +45,7 @@ export function RecentActivity({ activities = fallbackActivities }: RecentActivi
   return (
     <div className="rounded-md border border-border bg-card shadow-sm">
       <div className="border-b border-border px-4 py-3">
-        <h3 className="text-sm font-semibold text-foreground">Hoat dong gan day</h3>
+        <h3 className="text-sm font-semibold text-foreground">Hoạt động gần đây</h3>
       </div>
       <div className="divide-y divide-border">
         {activities.map((activity) => {
@@ -77,12 +77,12 @@ export function RecentActivity({ activities = fallbackActivities }: RecentActivi
           )
         })}
         {activities.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted-foreground">Chua co hoat dong.</p>
+          <p className="px-4 py-4 text-sm text-muted-foreground">Chưa có hoạt động.</p>
         ) : null}
       </div>
       <div className="border-t border-border px-4 py-2">
         <button className="text-sm font-medium text-primary hover:underline">
-          Xem tat ca hoat dong
+          Xem tất cả hoạt động
         </button>
       </div>
     </div>

@@ -12,18 +12,19 @@ import {
   type DashboardSystemStatus,
 } from "@/lib/admin-api"
 import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 
 const fallbackSystemStatuses: DashboardSystemStatus[] = [
-  { label: "Co so du lieu", status: "active", detail: "Hoat dong on dinh" },
-  { label: "Bo nho dem", status: "active", detail: "Dang theo doi" },
-  { label: "Sao luu tu dong", status: "warning", detail: "Can kiem tra lich backup" },
+  { label: "Cơ sở dữ liệu", status: "active", detail: "Hoạt động ổn định" },
+  { label: "Bộ nhớ đệm", status: "active", detail: "Đang theo dõi" },
+  { label: "Sao lưu tự động", status: "warning", detail: "Cần kiểm tra lịch backup" },
 ]
 
 const fallbackPendingItems: DashboardPendingItem[] = [
   {
     id: "1",
-    title: "Tran danh Duong 9 - Nam Lao",
-    type: "Truyen thong",
+    title: "Trận đánh Đường 9 - Nam Lào",
+    type: "Truyền thống",
     author: "N/A",
     date: "-",
     status: "pending",
@@ -59,8 +60,9 @@ export function DashboardContent() {
       setLastUpdatedAt(new Date())
     } catch (apiError) {
       const message =
-        apiError instanceof Error ? apiError.message : "Khong tai duoc du lieu dashboard."
+        apiError instanceof Error ? apiError.message : "Không tải được dữ liệu dashboard."
       setError(message)
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }
@@ -106,15 +108,15 @@ export function DashboardContent() {
           </div>
           <div>
             <h1 className="text-lg font-bold uppercase tracking-wide text-primary">
-              Dashboard - Bao cao va thong ke
+              Dashboard - Báo cáo và thống kê
             </h1>
             <p className="text-sm text-muted-foreground">
-              Tong quan hoat dong he thong quan tri.
+              Tổng quan hoạt động hệ thống quản trị.
             </p>
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs text-muted-foreground">Cap nhat lan cuoi</p>
+          <p className="text-xs text-muted-foreground">Cập nhật lần cuối</p>
           <p className="text-sm font-semibold text-foreground">
             {lastUpdatedAt ? formatLastUpdated(lastUpdatedAt) : "--"}
           </p>
@@ -126,33 +128,33 @@ export function DashboardContent() {
           <span>{error}</span>
           <Button variant="outline" size="sm" onClick={() => void fetchOverview()}>
             <RefreshCcw className="mr-2 h-4 w-4" />
-            Thu lai
+            Thử lại
           </Button>
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatsCard
-          title="Tong bai viet"
+          title="Tổng bài viết"
           value={formatNumber(summary.totalPosts)}
           icon={FileText}
           variant="primary"
         />
         <StatsCard
-          title="Ho so du lieu"
+          title="Hồ sơ dữ liệu"
           value={formatNumber(summary.totalProfiles)}
           icon={FolderOpen}
           variant="secondary"
         />
-        <StatsCard title="Ca khuc" value={formatNumber(summary.totalSongs)} icon={Music} variant="accent" />
-        <StatsCard title="Tai khoan" value={formatNumber(summary.totalAccounts)} icon={Users} />
-        <StatsCard title="Luot xem hom nay" value={formatNumber(summary.viewsToday)} icon={Eye} />
-        <StatsCard title="Chinh sua hom nay" value={formatNumber(summary.editsToday)} icon={Edit3} />
+        <StatsCard title="Ca khúc" value={formatNumber(summary.totalSongs)} icon={Music} variant="accent" />
+        <StatsCard title="Tài khoản" value={formatNumber(summary.totalAccounts)} icon={Users} />
+        <StatsCard title="Lượt xem hôm nay" value={formatNumber(summary.viewsToday)} icon={Eye} />
+        <StatsCard title="Chỉnh sửa hôm nay" value={formatNumber(summary.editsToday)} icon={Edit3} />
       </div>
 
       {isLoading ? (
         <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
-          Dang tai du lieu dashboard...
+          Đang tải dữ liệu dashboard...
         </div>
       ) : (
         <>
@@ -167,7 +169,7 @@ export function DashboardContent() {
 
             <div className="rounded-md border border-border bg-card shadow-sm">
               <div className="border-b border-border px-4 py-3">
-                <h3 className="text-sm font-semibold text-foreground">Trang thai he thong</h3>
+                <h3 className="text-sm font-semibold text-foreground">Trạng thái hệ thống</h3>
               </div>
               <div className="divide-y divide-border">
                 {systemStatuses.map((item, index) => (
@@ -184,26 +186,26 @@ export function DashboardContent() {
 
           <div className="rounded-md border border-border bg-card shadow-sm">
             <div className="border-b border-border px-4 py-3">
-              <h3 className="text-sm font-semibold text-foreground">Noi dung cho duyet</h3>
+              <h3 className="text-sm font-semibold text-foreground">Nội dung chờ duyệt</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                      Tieu de
+                      Tiêu đề
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                      Loai
+                      Loại
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                      Nguoi tao
+                      Người tạo
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                      Ngay tao
+                      Ngày tạo
                     </th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">
-                      Trang thai
+                      Trạng thái
                     </th>
                   </tr>
                 </thead>
@@ -224,7 +226,7 @@ export function DashboardContent() {
                         colSpan={5}
                         className="px-4 py-4 text-sm text-muted-foreground"
                       >
-                        Khong co du lieu.
+                        Không có dữ liệu.
                       </td>
                     </tr>
                   ) : null}
@@ -278,8 +280,8 @@ function PendingRow({
   status: "pending" | "review"
 }) {
   const statusLabels = {
-    pending: { label: "Cho duyet", className: "bg-[#F57C00]/10 text-[#F57C00]" },
-    review: { label: "Dang xem xet", className: "bg-info/10 text-info" },
+    pending: { label: "Chờ duyệt", className: "bg-[#F57C00]/10 text-[#F57C00]" },
+    review: { label: "Đang xem xét", className: "bg-info/10 text-info" },
   }
 
   const s = statusLabels[status]

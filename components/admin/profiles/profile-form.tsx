@@ -1,32 +1,38 @@
 "use client"
 
-import React from "react"
-
 import { useState } from "react"
-import { Save, X, ArrowLeft, Upload, ImageIcon } from "lucide-react"
+import type { ChangeEvent } from "react"
+import { ArrowLeft, ImageIcon, Save, Upload, X } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { FormField } from "../shared/form-field"
 import { ConfirmDialog } from "../shared/confirm-dialog"
 
-interface ProfileFormProps {
-  mode: "create" | "edit"
-  profileType: "thu-truong" | "chien-si" | "anh-hung"
-  initialData?: {
-    rank: string
-    fullName: string
-    birthDate: string
-    birthPlace: string
-    joinDate: string
-    position: string
-    unit: string
-    achievements: string
-    biography: string
-  }
-  onBack: () => void
-  onSave: (data: unknown) => void
+export type ProfileFormType = "thu-truong" | "chien-si" | "anh-hung"
+export type ProfilePublishStatus = "draft" | "pending" | "published" | "hidden"
+
+export interface ProfileFormData {
+  rank: string
+  fullName: string
+  birthDate: string
+  birthPlace: string
+  joinDate: string
+  position: string
+  unit: string
+  achievements: string
+  biography: string
+  status: ProfilePublishStatus
 }
 
-const profileTypeLabels = {
+interface ProfileFormProps {
+  mode: "create" | "edit"
+  profileType: ProfileFormType
+  initialData?: ProfileFormData
+  onBack: () => void
+  onSave: (data: ProfileFormData) => Promise<void> | void
+}
+
+const profileTypeLabels: Record<ProfileFormType, string> = {
   "thu-truong": "Thủ trưởng",
   "chien-si": "Chiến sĩ",
   "anh-hung": "Anh hùng",
@@ -64,6 +70,13 @@ const unitOptions = [
   { value: "lien-doan-2", label: "Liên đoàn 2" },
 ]
 
+const publishStatusOptions: { value: ProfilePublishStatus; label: string }[] = [
+  { value: "draft", label: "Bản nháp" },
+  { value: "pending", label: "Chờ duyệt" },
+  { value: "published", label: "Đã xuất bản" },
+  { value: "hidden", label: "Đã ẩn" },
+]
+
 export function ProfileForm({
   mode,
   profileType,
@@ -71,7 +84,7 @@ export function ProfileForm({
   onBack,
   onSave,
 }: ProfileFormProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProfileFormData>({
     rank: initialData?.rank ?? "",
     fullName: initialData?.fullName ?? "",
     birthDate: initialData?.birthDate ?? "",
@@ -81,59 +94,81 @@ export function ProfileForm({
     unit: initialData?.unit ?? "",
     achievements: initialData?.achievements ?? "",
     biography: initialData?.biography ?? "",
+    status: initialData?.status ?? "draft",
   })
-
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: keyof ProfileFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }))
     }
   }
 
-  const validateForm = () => {
+  const validateForm = (): Record<string, string> => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.rank) newErrors.rank = "Vui lòng chọn cấp bậc"
-    if (!formData.fullName.trim())
+    if (!formData.rank) {
+      newErrors.rank = "Vui lòng chọn cấp bậc"
+    }
+    if (!formData.fullName.trim()) {
       newErrors.fullName = "Vui lòng nhập họ và tên"
-    if (!formData.birthDate) newErrors.birthDate = "Vui lòng nhập ngày sinh"
-    if (!formData.unit) newErrors.unit = "Vui lòng chọn đơn vị"
+    }
+    if (!formData.birthDate.trim()) {
+      newErrors.birthDate = "Vui lòng nhập ngày sinh"
+    }
+    if (!formData.unit) {
+      newErrors.unit = "Vui lòng chọn đơn vị"
+    }
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return newErrors
   }
 
-  const handleSubmit = () => {
-    if (validateForm()) {
-      onSave(formData)
+  const handleSubmit = async () => {
+    const validationErrors = validateForm()
+
+    if (Object.keys(validationErrors).length > 0) {
+      const firstError = Object.values(validationErrors)[0]
+      toast.error(firstError || "Vui lòng kiểm tra lại thông tin hồ sơ.")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await onSave(formData)
+    } catch (saveError) {
+      const message =
+        saveError instanceof Error ? saveError.message : "Không thể lưu hồ sơ."
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setPreviewImage(event.target?.result as string)
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (loadEvent) => {
+      const image = loadEvent.target?.result
+      if (typeof image === "string") {
+        setPreviewImage(image)
       }
-      reader.readAsDataURL(file)
     }
+    reader.readAsDataURL(file)
   }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onBack}
-          className="h-9 w-9"
-        >
+        <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -151,14 +186,10 @@ export function ProfileForm({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Main Form */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Basic Information Card */}
           <div className="rounded-md border border-border bg-card shadow-sm">
             <div className="border-b border-border px-6 py-4">
-              <h2 className="text-base font-semibold text-foreground">
-                Thông tin cơ bản
-              </h2>
+              <h2 className="text-base font-semibold text-foreground">Thông tin cơ bản</h2>
             </div>
 
             <div className="space-y-6 p-6">
@@ -169,7 +200,7 @@ export function ProfileForm({
                   type="select"
                   required
                   value={formData.rank}
-                  onChange={(v) => handleChange("rank", v)}
+                  onChange={(value) => handleChange("rank", value)}
                   options={rankOptions}
                   error={errors.rank}
                 />
@@ -179,7 +210,7 @@ export function ProfileForm({
                   required
                   placeholder="Nhập họ và tên đầy đủ"
                   value={formData.fullName}
-                  onChange={(v) => handleChange("fullName", v)}
+                  onChange={(value) => handleChange("fullName", value)}
                   error={errors.fullName}
                 />
               </div>
@@ -191,7 +222,7 @@ export function ProfileForm({
                   required
                   placeholder="DD/MM/YYYY"
                   value={formData.birthDate}
-                  onChange={(v) => handleChange("birthDate", v)}
+                  onChange={(value) => handleChange("birthDate", value)}
                   error={errors.birthDate}
                 />
                 <FormField
@@ -199,7 +230,7 @@ export function ProfileForm({
                   name="birthPlace"
                   placeholder="Nhập quê quán"
                   value={formData.birthPlace}
-                  onChange={(v) => handleChange("birthPlace", v)}
+                  onChange={(value) => handleChange("birthPlace", value)}
                 />
               </div>
 
@@ -209,14 +240,14 @@ export function ProfileForm({
                   name="joinDate"
                   placeholder="DD/MM/YYYY"
                   value={formData.joinDate}
-                  onChange={(v) => handleChange("joinDate", v)}
+                  onChange={(value) => handleChange("joinDate", value)}
                 />
                 <FormField
                   label="Chức vụ"
                   name="position"
                   placeholder="Nhập chức vụ"
                   value={formData.position}
-                  onChange={(v) => handleChange("position", v)}
+                  onChange={(value) => handleChange("position", value)}
                 />
               </div>
 
@@ -226,19 +257,16 @@ export function ProfileForm({
                 type="select"
                 required
                 value={formData.unit}
-                onChange={(v) => handleChange("unit", v)}
+                onChange={(value) => handleChange("unit", value)}
                 options={unitOptions}
                 error={errors.unit}
               />
             </div>
           </div>
 
-          {/* Biography Card */}
           <div className="rounded-md border border-border bg-card shadow-sm">
             <div className="border-b border-border px-6 py-4">
-              <h2 className="text-base font-semibold text-foreground">
-                Tiểu sử & Thành tích
-              </h2>
+              <h2 className="text-base font-semibold text-foreground">Tiểu sử và thành tích</h2>
             </div>
 
             <div className="space-y-6 p-6">
@@ -248,7 +276,7 @@ export function ProfileForm({
                 type="textarea"
                 placeholder="Nhập các thành tích nổi bật..."
                 value={formData.achievements}
-                onChange={(v) => handleChange("achievements", v)}
+                onChange={(value) => handleChange("achievements", value)}
                 rows={4}
               />
               <FormField
@@ -257,20 +285,17 @@ export function ProfileForm({
                 type="textarea"
                 placeholder="Nhập tiểu sử chi tiết..."
                 value={formData.biography}
-                onChange={(v) => handleChange("biography", v)}
+                onChange={(value) => handleChange("biography", value)}
                 rows={8}
               />
             </div>
           </div>
         </div>
 
-        {/* Sidebar - Image Upload */}
         <div className="space-y-6">
           <div className="rounded-md border border-border bg-card shadow-sm">
             <div className="border-b border-border px-6 py-4">
-              <h2 className="text-base font-semibold text-foreground">
-                Ảnh chân dung
-              </h2>
+              <h2 className="text-base font-semibold text-foreground">Ảnh chân dung</h2>
             </div>
 
             <div className="p-6">
@@ -278,8 +303,8 @@ export function ProfileForm({
                 <div className="mb-4 flex h-48 w-36 items-center justify-center overflow-hidden rounded border border-border bg-muted">
                   {previewImage ? (
                     <img
-                      src={previewImage || "/placeholder.svg"}
-                      alt="Preview"
+                      src={previewImage}
+                      alt="Ảnh xem trước"
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -311,12 +336,9 @@ export function ProfileForm({
             </div>
           </div>
 
-          {/* Publication Status */}
           <div className="rounded-md border border-border bg-card shadow-sm">
             <div className="border-b border-border px-6 py-4">
-              <h2 className="text-base font-semibold text-foreground">
-                Trạng thái xuất bản
-              </h2>
+              <h2 className="text-base font-semibold text-foreground">Trạng thái xuất bản</h2>
             </div>
 
             <div className="p-6">
@@ -324,43 +346,46 @@ export function ProfileForm({
                 label="Trạng thái"
                 name="status"
                 type="select"
-                options={[
-                  { value: "draft", label: "Bản nháp" },
-                  { value: "pending", label: "Chờ duyệt" },
-                  { value: "published", label: "Đã xuất bản" },
-                  { value: "hidden", label: "Đã ẩn" },
-                ]}
+                value={formData.status}
+                onChange={(value) =>
+                  handleChange("status", value as ProfilePublishStatus)
+                }
+                options={publishStatusOptions}
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Sticky Action Bar */}
       <div className="sticky bottom-0 -mx-6 -mb-6 border-t border-border bg-card px-6 py-4 shadow-lg">
         <div className="flex items-center justify-end gap-3">
           <Button
             variant="outline"
             onClick={() => setCancelDialogOpen(true)}
             className="gap-2"
+            disabled={isSubmitting}
           >
             <X className="h-4 w-4" />
             Hủy bỏ
           </Button>
-          <Button variant="outline" className="gap-2 bg-transparent">
+          <Button variant="outline" className="gap-2 bg-transparent" disabled={isSubmitting}>
             Lưu bản nháp
           </Button>
           <Button
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            disabled={isSubmitting}
           >
             <Save className="h-4 w-4" />
-            {mode === "create" ? "Tạo hồ sơ" : "Lưu thay đổi"}
+            {isSubmitting
+              ? "Đang lưu..."
+              : mode === "create"
+                ? "Tạo hồ sơ"
+                : "Lưu thay đổi"}
           </Button>
         </div>
       </div>
 
-      {/* Cancel Confirmation Dialog */}
       <ConfirmDialog
         open={cancelDialogOpen}
         onOpenChange={setCancelDialogOpen}

@@ -82,16 +82,16 @@ function parseErrorMessage(status: number, payload: ApiEnvelope<unknown> | null)
   }
 
   if (status === 401) {
-    return "Phien dang nhap het han hoac khong hop le."
+    return "Phiên đăng nhập hết hạn hoặc không hợp lệ."
   }
   if (status === 403) {
-    return "Ban khong co quyen thuc hien thao tac nay."
+    return "Bạn không có quyền thực hiện thao tác này."
   }
   if (status >= 500) {
-    return "He thong tam thoi loi, vui long thu lai."
+    return "Hệ thống tạm thời lỗi, vui lòng thử lại."
   }
 
-  return "Khong the xu ly yeu cau."
+  return "Không thể xử lý yêu cầu."
 }
 
 export async function apiRequest<T>(
@@ -113,7 +113,7 @@ export async function apiRequest<T>(
     const session = loadAuthSession()
     if (!session) {
       throw new ApiError({
-        message: "Ban chua dang nhap.",
+        message: "Bạn chưa đăng nhập.",
         status: 401,
       })
     }
@@ -131,13 +131,13 @@ export async function apiRequest<T>(
   } catch (error) {
     if (error instanceof Error) {
       throw new ApiError({
-        message: "Khong ket noi duoc den API. Kiem tra lai route va server.",
+        message: "Không kết nối được đến API. Kiểm tra lại route và server.",
         status: 0,
       })
     }
 
     throw new ApiError({
-      message: "Khong ket noi duoc den API.",
+      message: "Không kết nối được đến API.",
       status: 0,
     })
   }

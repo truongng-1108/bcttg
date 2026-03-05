@@ -13,6 +13,7 @@ import {
   getAdminContentItems,
   patchContentVisibility,
 } from "@/lib/admin-api"
+import { toast } from "sonner"
 
 interface CMSItem {
   id: string
@@ -93,8 +94,9 @@ export function CMSContent() {
       setTotalItems(response.totalElements)
     } catch (apiError) {
       const message =
-        apiError instanceof Error ? apiError.message : "Khong tai duoc danh sach bai viet."
+        apiError instanceof Error ? apiError.message : "Không tải được danh sách bài viết."
       setError(message)
+      toast.error(message)
       setContentData([])
       setTotalItems(0)
     } finally {
@@ -118,8 +120,9 @@ export function CMSContent() {
       )
     } catch (apiError) {
       const message =
-        apiError instanceof Error ? apiError.message : "Khong cap nhat duoc trang thai hien thi."
+        apiError instanceof Error ? apiError.message : "Không cập nhật được trạng thái hiển thị."
       setError(message)
+      toast.error(message)
     }
   }
 
@@ -135,8 +138,9 @@ export function CMSContent() {
       void fetchContentItems()
     } catch (apiError) {
       const message =
-        apiError instanceof Error ? apiError.message : "Khong xoa duoc bai viet."
+        apiError instanceof Error ? apiError.message : "Không xóa được bài viết."
       setError(message)
+      toast.error(message)
       setDeleteDialogOpen(false)
     }
   }
@@ -150,7 +154,7 @@ export function CMSContent() {
     },
     {
       key: "title",
-      title: "Tieu de",
+      title: "Tiêu đề",
       sortable: true,
       render: (_, row) => (
         <div className="max-w-md">
@@ -160,7 +164,7 @@ export function CMSContent() {
     },
     {
       key: "category",
-      title: "Danh muc",
+      title: "Danh mục",
       sortable: true,
       render: (value) => (
         <span className="rounded bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">
@@ -170,42 +174,42 @@ export function CMSContent() {
     },
     {
       key: "author",
-      title: "Tac gia",
+      title: "Tác giả",
       sortable: true,
     },
     {
       key: "views",
-      title: "Luot xem",
+      title: "Lượt xem",
       sortable: true,
       render: (value) => <span className="text-muted-foreground">{Number(value).toLocaleString("vi-VN")}</span>,
     },
     {
       key: "status",
-      title: "Trang thai",
+      title: "Trạng thái",
       render: (value) => <StatusBadge status={value as StatusType} />,
     },
     {
       key: "visibility",
-      title: "Hien thi",
+      title: "Hiển thị",
       render: (_, row) => (
         <Switch checked={row.isVisible} onCheckedChange={() => void handleToggleVisibility(row)} />
       ),
     },
     {
       key: "updatedAt",
-      title: "Cap nhat",
+      title: "Cập nhật",
       sortable: true,
     },
     {
       key: "actions",
-      title: "Thao tac",
+      title: "Thao tác",
       render: (_, row) => (
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            title="Xem truoc"
+            title="Xem trước"
           >
             <Eye className="h-4 w-4" />
           </Button>
@@ -213,7 +217,7 @@ export function CMSContent() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            title="Chinh sua"
+            title="Chỉnh sửa"
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -221,7 +225,7 @@ export function CMSContent() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-[#F57C00]"
-            title={row.isVisible ? "An" : "Hien"}
+            title={row.isVisible ? "Ẩn" : "Hiện"}
             onClick={() => {
               setSelectedItem(row)
               setHideDialogOpen(true)
@@ -233,7 +237,7 @@ export function CMSContent() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            title="Xoa"
+            title="Xóa"
             onClick={() => {
               setSelectedItem(row)
               setDeleteDialogOpen(true)
@@ -259,19 +263,19 @@ export function CMSContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Quan ly noi dung CMS</h1>
+          <h1 className="text-xl font-bold text-foreground">Quản lý nội dung CMS</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Du lieu dang lay tu API admin/content-items.
+            Dữ liệu đang lấy từ API admin/content-items.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="gap-2 bg-transparent">
             <Download className="h-4 w-4" />
-            Xuat Excel
+            Xuất Excel
           </Button>
           <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
             <Plus className="h-4 w-4" />
-            Them bai viet
+            Thêm bài viết
           </Button>
         </div>
       </div>
@@ -284,19 +288,19 @@ export function CMSContent() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Tong bai viet</p>
+          <p className="text-sm text-muted-foreground">Tổng bài viết</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{totalItems.toLocaleString("vi-VN")}</p>
         </div>
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Dang hien thi (trang nay)</p>
+          <p className="text-sm text-muted-foreground">Đang hiển thị (trang này)</p>
           <p className="mt-1 text-2xl font-bold text-[#2E7D32]">{activeCountInPage}</p>
         </div>
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Dang an (trang nay)</p>
+          <p className="text-sm text-muted-foreground">Đang ẩn (trang này)</p>
           <p className="mt-1 text-2xl font-bold text-muted-foreground">{hiddenCountInPage}</p>
         </div>
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Dang tai trang</p>
+          <p className="text-sm text-muted-foreground">Đang tải trang</p>
           <p className="mt-1 text-2xl font-bold text-[#F57C00]">{contentData.length}</p>
         </div>
       </div>
@@ -310,25 +314,25 @@ export function CMSContent() {
           }}
         >
           <SelectTrigger className="w-52">
-            <SelectValue placeholder="Loc hien thi" />
+            <SelectValue placeholder="Lọc hiển thị" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tat ca trang thai</SelectItem>
-            <SelectItem value="visible">Chi hien thi</SelectItem>
-            <SelectItem value="hidden">Chi dang an</SelectItem>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="visible">Chỉ hiển thị</SelectItem>
+            <SelectItem value="hidden">Chỉ đang ẩn</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {isLoading ? (
         <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
-          Dang tai du lieu...
+          Đang tải dữ liệu...
         </div>
       ) : (
         <DataTable
           columns={columns}
           data={contentData}
-          searchPlaceholder="Tim theo tieu de, tac gia..."
+          searchPlaceholder="Tìm theo tiêu đề, tác giả..."
           totalItems={totalItems}
           currentPage={currentPage}
           pageSize={PAGE_SIZE}
@@ -348,9 +352,9 @@ export function CMSContent() {
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Xac nhan xoa bai viet"
-        description={`Ban co chac chan muon xoa bai viet "${selectedItem?.title}"?`}
-        confirmText="Xoa bai viet"
+        title="Xác nhận xóa bài viết"
+        description={`Bạn có chắc chắn muốn xóa bài viết "${selectedItem?.title}"?`}
+        confirmText="Xóa bài viết"
         variant="danger"
         icon="delete"
         onConfirm={() => void handleConfirmDelete()}
@@ -359,13 +363,13 @@ export function CMSContent() {
       <ConfirmDialog
         open={hideDialogOpen}
         onOpenChange={setHideDialogOpen}
-        title={selectedItem?.isVisible ? "Xac nhan an bai viet" : "Xac nhan hien bai viet"}
+        title={selectedItem?.isVisible ? "Xác nhận ẩn bài viết" : "Xác nhận hiện bài viết"}
         description={
           selectedItem?.isVisible
-            ? `Ban co chac chan muon an bai viet "${selectedItem?.title}"?`
-            : `Ban co chac chan muon hien lai bai viet "${selectedItem?.title}"?`
+            ? `Bạn có chắc chắn muốn ẩn bài viết "${selectedItem?.title}"?`
+            : `Bạn có chắc chắn muốn hiện lại bài viết "${selectedItem?.title}"?`
         }
-        confirmText={selectedItem?.isVisible ? "An bai viet" : "Hien bai viet"}
+        confirmText={selectedItem?.isVisible ? "Ẩn bài viết" : "Hiện bài viết"}
         variant="warning"
         icon="hide"
         onConfirm={() => {

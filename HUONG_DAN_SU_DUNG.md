@@ -4,7 +4,7 @@ Tai lieu nay huong dan van hanh, su dung va khai thac API BCTTG theo cach thuc t
 - chay he thong nhanh bang Docker Compose,
 - dang nhap bang `phone + password`,
 - test API bang Swagger/cURL,
-- quan ly du lieu (content, song, profile, note, media),
+- quan ly du lieu (content, song, profile, note, media, user),
 - xu ly cac loi van hanh thuong gap.
 
 ---
@@ -17,6 +17,7 @@ Ung dung gom 2 thanh phan chinh:
 2. `mysql` (MySQL 8.3)
 
 Chuc nang chinh:
+- Quan ly tai khoan nguoi dung (role, trang thai, cap lai mat khau).
 - Quan ly danh muc/noi dung truyen thong.
 - Quan ly danh muc/bai hat.
 - Quan ly ho so du lieu (`THU_TRUONG`, `CHIEN_SI`, `ANH_HUNG`).
@@ -223,9 +224,12 @@ Authorization: Bearer <jwt_token>
 
 ### 7.4. Role thuc te
 - `ADMIN`, `MANAGER`, `USER`
-- Cac endpoint `admin`:
-  - `GET` list/detail: cho phep ca 3 role.
-  - `POST/PUT/PATCH/DELETE`: chi `ADMIN` va `MANAGER`.
+- Da so endpoint `admin`:
+  - `GET` list/detail: cho phep `ADMIN`, `MANAGER`, `USER`.
+  - `POST/PUT/PATCH/DELETE`: cho phep `ADMIN`, `MANAGER`.
+- Rieng module `admin/users`:
+  - `GET` list/detail: `ADMIN`, `MANAGER`.
+  - `POST/PUT/PATCH/DELETE`: chi `ADMIN`.
 
 ---
 
@@ -391,6 +395,19 @@ Pagination (`meta`) khi list:
 |---|---|---|---|
 | GET | `/api/v1/admin/dashboard/overview` | ADMIN/MANAGER | Tong hop so lieu dashboard admin |
 
+## 9.14 Admin - Users
+
+| Method | Path | Role | Mo ta |
+|---|---|---|---|
+| GET | `/api/v1/admin/users` | ADMIN/MANAGER | Liet ke tai khoan nguoi dung |
+| GET | `/api/v1/admin/users/{id}` | ADMIN/MANAGER | Chi tiet tai khoan |
+| POST | `/api/v1/admin/users` | ADMIN | Tao tai khoan moi |
+| PUT | `/api/v1/admin/users/{id}` | ADMIN | Cap nhat thong tin tai khoan + profile |
+| PATCH | `/api/v1/admin/users/{id}/active` | ADMIN | Khoa/mo khoa tai khoan |
+| PATCH | `/api/v1/admin/users/{id}/role` | ADMIN | Doi role tai khoan |
+| PATCH | `/api/v1/admin/users/{id}/reset-password` | ADMIN | Cap lai mat khau |
+| DELETE | `/api/v1/admin/users/{id}` | ADMIN | Xoa mem tai khoan |
+
 ---
 
 ## 10) Query param dung chung cho list API
@@ -405,6 +422,7 @@ Query rieng theo module:
 - Content/Song list: `q`, `is_visible`, `category_id`, `type` (tuy endpoint)
 - Data profile list: `profileType` (`THU_TRUONG|CHIEN_SI|ANH_HUNG`), `q`, `is_visible`
 - Personal notes list: `q`, `is_archived`
+- User list: `q`, `role` (`ADMIN|MANAGER|USER`), `is_active`
 
 Vi du:
 
@@ -591,6 +609,58 @@ Rule:
 }
 ```
 
+### 11.11 Tao user (admin)
+
+```json
+{
+  "phone": "0900000010",
+  "password": "User@2026",
+  "role": "USER",
+  "isActive": true,
+  "profile": {
+    "fullName": "Nguyen Van Moi",
+    "position": "Chuyen vien",
+    "unitName": "Phong Tong hop",
+    "rankName": "Trung uy",
+    "email": "moi.nguyen@bcttg.local",
+    "address": "Ha Noi",
+    "birthDate": "1995-10-20"
+  }
+}
+```
+
+Rule:
+- `phone`: chi gom so, do dai 8-15.
+- `password`: toi thieu 8 ky tu, phai co chu hoa + chu thuong + so.
+- `profile.fullName` bat buoc.
+
+### 11.12 Khoa/mo khoa user
+
+```json
+{
+  "value": false
+}
+```
+
+### 11.13 Doi role user
+
+```json
+{
+  "role": "MANAGER"
+}
+```
+
+### 11.14 Cap lai mat khau user
+
+```json
+{
+  "newPassword": "Reset@2026"
+}
+```
+
+Rule:
+- Password moi cung dung policy nhu luc tao tai khoan.
+
 ---
 
 ## 12) Upload va phuc vu media
@@ -633,6 +703,7 @@ Cac nhom tag hien thi:
 - Media (Public/Admin)
 - Personal Notes
 - Dashboard (Admin)
+- Users (Admin)
 
 ---
 
@@ -678,6 +749,31 @@ curl -i -X POST http://localhost:8080/api/v1/notes \
 ```bash
 curl -i http://localhost:8080/api/v1/admin/dashboard/overview \
   -H "Authorization: Bearer <TOKEN>"
+```
+
+### 14.7 Liet ke user (admin/manager)
+
+```bash
+curl -i "http://localhost:8080/api/v1/admin/users?page=1&page_size=20&role=USER&is_active=true" \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+### 14.8 Tao user (admin)
+
+```bash
+curl -i -X POST http://localhost:8080/api/v1/admin/users \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"phone\":\"0900000010\",\"password\":\"User@2026\",\"role\":\"USER\",\"isActive\":true,\"profile\":{\"fullName\":\"Nguyen Van Moi\"}}"
+```
+
+### 14.9 Cap lai mat khau user (admin)
+
+```bash
+curl -i -X PATCH http://localhost:8080/api/v1/admin/users/10/reset-password \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d "{\"newPassword\":\"Reset@2026\"}"
 ```
 
 ---
@@ -763,6 +859,14 @@ Neu can dung root:
 ```bash
 docker exec -it bcttg-mysql mysql -uroot -p<MYSQL_ROOT_PASSWORD> -e "SHOW DATABASES;"
 ```
+
+## 15.8 Loi module Users (`403` / `400`)
+
+Truong hop thuong gap:
+- `MANAGER` goi API ghi (`POST/PUT/PATCH/DELETE`) cua `/api/v1/admin/users` -> `403`.
+- `ADMIN` tu khoa/xoa/chuyen role chinh minh -> `403`.
+- Password khong dat policy (thieu chu hoa/thuong/so, < 8 ky tu) -> `400`.
+- `phone` khong hop le (khong phai so hoac do dai khong nam trong 8-15) -> `400`.
 
 ---
 

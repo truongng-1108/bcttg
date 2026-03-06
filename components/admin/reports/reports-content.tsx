@@ -15,6 +15,7 @@ import {
   Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { toast } from "sonner"
 import {
   Select,
   SelectContent,
@@ -72,8 +73,12 @@ export function ReportsContent() {
   const [reportType, setReportType] = useState("all")
 
   const handleExportExcel = (type: string) => {
-    // Simulate export
-    alert(`Đang xuất báo cáo ${type} ra file Excel...`)
+    if (!type.trim()) {
+      toast.error("Không xác định được loại báo cáo để xuất.")
+      return
+    }
+
+    toast.info(`Đang xuất báo cáo ${type} ra file Excel...`)
   }
 
   return (

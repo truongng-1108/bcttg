@@ -1,12 +1,19 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Eye, EyeOff, Pencil, Trash2, Download, GripVertical } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { Download, Eye, EyeOff, GripVertical, Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DataTable, type Column } from "../shared/data-table"
-import { StatusBadge, type StatusType } from "../shared/status-badge"
 import { ConfirmDialog } from "../shared/confirm-dialog"
+import { StatusBadge, type StatusType } from "../shared/status-badge"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  deleteContentItem,
+  getAdminContentItems,
+  patchContentVisibility,
+} from "@/lib/admin-api"
+import { toast } from "sonner"
 
 interface CMSItem {
   id: string
@@ -15,95 +22,127 @@ interface CMSItem {
   author: string
   status: StatusType
   views: number
-  publishedAt: string
   updatedAt: string
   order: number
+  isVisible: boolean
 }
 
-const mockContent: CMSItem[] = [
-  {
-    id: "1",
-    title: "Lịch sử hình thành và phát triển Binh chủng Tăng Thiết Giáp",
-    category: "Truyền thống",
-    author: "Đại úy Nguyễn Văn A",
-    status: "active",
-    views: 1247,
-    publishedAt: "15/03/2024",
-    updatedAt: "25/01/2026",
-    order: 1,
-  },
-  {
-    id: "2",
-    title: "Trận đánh Đường 9 - Nam Lào: Chiến công hiển hách",
-    category: "Truyền thống",
-    author: "Thượng úy Lê Văn B",
-    status: "active",
-    views: 892,
-    publishedAt: "20/05/2024",
-    updatedAt: "20/01/2026",
-    order: 2,
-  },
-  {
-    id: "3",
-    title: "Chiến dịch Hồ Chí Minh - Vai trò của lực lượng xe tăng",
-    category: "Truyền thống",
-    author: "Trung úy Trần Văn C",
-    status: "hidden",
-    views: 756,
-    publishedAt: "10/08/2024",
-    updatedAt: "15/01/2026",
-    order: 3,
-  },
-  {
-    id: "4",
-    title: "Tinh thần đoàn kết, kỷ luật của người lính xe tăng",
-    category: "Nét tiêu biểu",
-    author: "Thiếu tá Phạm Văn D",
-    status: "active",
-    views: 543,
-    publishedAt: "01/02/2024",
-    updatedAt: "10/01/2026",
-    order: 4,
-  },
-  {
-    id: "5",
-    title: "Huấn luyện chiến đấu trong điều kiện địa hình phức tạp",
-    category: "Nét tiêu biểu",
-    author: "Đại úy Hoàng Văn E",
-    status: "pending",
-    views: 0,
-    publishedAt: "-",
-    updatedAt: "27/01/2026",
-    order: 5,
-  },
-  {
-    id: "6",
-    title: "60 năm xây dựng và trưởng thành (1965-2025)",
-    category: "Truyền thống",
-    author: "Thượng úy Vũ Văn F",
-    status: "active",
-    views: 2156,
-    publishedAt: "05/10/2024",
-    updatedAt: "05/01/2026",
-    order: 6,
-  },
-]
+type VisibilityFilter = "all" | "visible" | "hidden"
+
+const PAGE_SIZE = 10
+
+const sortKeyMap: Record<string, string> = {
+  order: "sortOrder",
+  title: "title",
+  category: "categoryName",
+  author: "createdByName",
+  views: "viewCount",
+  updatedAt: "updatedAt",
+}
 
 export function CMSContent() {
   const [currentPage, setCurrentPage] = useState(1)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [hideDialogOpen, setHideDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<CMSItem | null>(null)
-  const [contentData, setContentData] = useState(mockContent)
+  const [contentData, setContentData] = useState<CMSItem[]>([])
+  const [totalItems, setTotalItems] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [sortKey, setSortKey] = useState("updatedAt")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilter>("all")
 
-  const handleToggleVisibility = (item: CMSItem) => {
-    setContentData((prev) =>
-      prev.map((c) =>
-        c.id === item.id
-          ? { ...c, status: c.status === "active" ? "hidden" : "active" as StatusType }
-          : c
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim())
+    }, 300)
+
+    return () => window.clearTimeout(timerId)
+  }, [searchQuery])
+
+  const fetchContentItems = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await getAdminContentItems({
+        page: currentPage,
+        pageSize: PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        sort: sortKey,
+        order: sortOrder,
+        isVisible:
+          visibilityFilter === "all" ? undefined : visibilityFilter === "visible",
+      })
+
+      setContentData(
+        response.items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          category: item.category,
+          author: item.author,
+          status: item.isVisible ? "active" : "hidden",
+          views: item.views,
+          updatedAt: item.updatedAt,
+          order: item.order,
+          isVisible: item.isVisible,
+        })),
       )
-    )
+      setTotalItems(response.totalElements)
+    } catch (apiError) {
+      const message =
+        apiError instanceof Error ? apiError.message : "Không tải được danh sách bài viết."
+      setError(message)
+      toast.error(message)
+      setContentData([])
+      setTotalItems(0)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [currentPage, debouncedSearch, sortKey, sortOrder, visibilityFilter])
+
+  useEffect(() => {
+    void fetchContentItems()
+  }, [fetchContentItems])
+
+  const handleToggleVisibility = async (item: CMSItem) => {
+    try {
+      await patchContentVisibility(item.id, !item.isVisible)
+      setContentData((prev) =>
+        prev.map((row) =>
+          row.id === item.id
+            ? { ...row, isVisible: !item.isVisible, status: !item.isVisible ? "active" : "hidden" }
+            : row,
+        ),
+      )
+    } catch (apiError) {
+      const message =
+        apiError instanceof Error ? apiError.message : "Không cập nhật được trạng thái hiển thị."
+      setError(message)
+      toast.error(message)
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!selectedItem) {
+      return
+    }
+
+    try {
+      await deleteContentItem(selectedItem.id)
+      setDeleteDialogOpen(false)
+      setSelectedItem(null)
+      void fetchContentItems()
+    } catch (apiError) {
+      const message =
+        apiError instanceof Error ? apiError.message : "Không xóa được bài viết."
+      setError(message)
+      toast.error(message)
+      setDeleteDialogOpen(false)
+    }
   }
 
   const columns: Column<CMSItem>[] = [
@@ -111,9 +150,7 @@ export function CMSContent() {
       key: "order",
       title: "",
       width: "w-10",
-      render: () => (
-        <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" />
-      ),
+      render: () => <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground" />,
     },
     {
       key: "title",
@@ -144,9 +181,7 @@ export function CMSContent() {
       key: "views",
       title: "Lượt xem",
       sortable: true,
-      render: (value) => (
-        <span className="text-muted-foreground">{Number(value).toLocaleString()}</span>
-      ),
+      render: (value) => <span className="text-muted-foreground">{Number(value).toLocaleString("vi-VN")}</span>,
     },
     {
       key: "status",
@@ -157,11 +192,7 @@ export function CMSContent() {
       key: "visibility",
       title: "Hiển thị",
       render: (_, row) => (
-        <Switch
-          checked={row.status === "active"}
-          onCheckedChange={() => handleToggleVisibility(row)}
-          disabled={row.status === "pending"}
-        />
+        <Switch checked={row.isVisible} onCheckedChange={() => void handleToggleVisibility(row)} />
       ),
     },
     {
@@ -194,17 +225,13 @@ export function CMSContent() {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-[#F57C00]"
-            title={row.status === "hidden" ? "Hiện" : "Ẩn"}
+            title={row.isVisible ? "Ẩn" : "Hiện"}
             onClick={() => {
               setSelectedItem(row)
               setHideDialogOpen(true)
             }}
           >
-            {row.status === "hidden" ? (
-              <Eye className="h-4 w-4" />
-            ) : (
-              <EyeOff className="h-4 w-4" />
-            )}
+            {row.isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </Button>
           <Button
             variant="ghost"
@@ -223,36 +250,22 @@ export function CMSContent() {
     },
   ]
 
-  const filters = [
-    {
-      key: "category",
-      label: "Danh mục",
-      options: [
-        { value: "truyen-thong", label: "Truyền thống" },
-        { value: "net-tieu-bieu", label: "Nét tiêu biểu" },
-      ],
-    },
-    {
-      key: "status",
-      label: "Trạng thái",
-      options: [
-        { value: "active", label: "Đang hiển thị" },
-        { value: "hidden", label: "Đã ẩn" },
-        { value: "pending", label: "Chờ duyệt" },
-      ],
-    },
-  ]
+  const activeCountInPage = useMemo(
+    () => contentData.filter((item) => item.status === "active").length,
+    [contentData],
+  )
+  const hiddenCountInPage = useMemo(
+    () => contentData.filter((item) => item.status === "hidden").length,
+    [contentData],
+  )
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">
-            Quản lý Nội dung CMS
-          </h1>
+          <h1 className="text-xl font-bold text-foreground">Quản lý nội dung CMS</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Quản lý nội dung bài viết, tài liệu truyền thống
+            Dữ liệu đang lấy từ API admin/content-items.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -267,79 +280,101 @@ export function CMSContent() {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {error ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div className="rounded-md border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Tổng bài viết</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">{contentData.length}</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{totalItems.toLocaleString("vi-VN")}</p>
         </div>
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Đang hiển thị</p>
-          <p className="mt-1 text-2xl font-bold text-[#2E7D32]">
-            {contentData.filter((c) => c.status === "active").length}
-          </p>
+          <p className="text-sm text-muted-foreground">Đang hiển thị (trang này)</p>
+          <p className="mt-1 text-2xl font-bold text-[#2E7D32]">{activeCountInPage}</p>
         </div>
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Đã ẩn</p>
-          <p className="mt-1 text-2xl font-bold text-muted-foreground">
-            {contentData.filter((c) => c.status === "hidden").length}
-          </p>
+          <p className="text-sm text-muted-foreground">Đang ẩn (trang này)</p>
+          <p className="mt-1 text-2xl font-bold text-muted-foreground">{hiddenCountInPage}</p>
         </div>
         <div className="rounded-md border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Chờ duyệt</p>
-          <p className="mt-1 text-2xl font-bold text-[#F57C00]">
-            {contentData.filter((c) => c.status === "pending").length}
-          </p>
+          <p className="text-sm text-muted-foreground">Đang tải trang</p>
+          <p className="mt-1 text-2xl font-bold text-[#F57C00]">{contentData.length}</p>
         </div>
       </div>
 
-      {/* Data Table */}
-      <DataTable
-        columns={columns}
-        data={contentData}
-        searchPlaceholder="Tìm theo tiêu đề, tác giả..."
-        filters={filters}
-        totalItems={contentData.length}
-        currentPage={currentPage}
-        pageSize={10}
-        onPageChange={setCurrentPage}
-      />
+      <div className="flex items-center justify-end">
+        <Select
+          value={visibilityFilter}
+          onValueChange={(value) => {
+            setVisibilityFilter(value as VisibilityFilter)
+            setCurrentPage(1)
+          }}
+        >
+          <SelectTrigger className="w-52">
+            <SelectValue placeholder="Lọc hiển thị" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="visible">Chỉ hiển thị</SelectItem>
+            <SelectItem value="hidden">Chỉ đang ẩn</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Delete Confirmation Dialog */}
+      {isLoading ? (
+        <div className="rounded-md border border-border bg-card p-6 text-sm text-muted-foreground">
+          Đang tải dữ liệu...
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={contentData}
+          searchPlaceholder="Tìm theo tiêu đề, tác giả..."
+          totalItems={totalItems}
+          currentPage={currentPage}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+          onSearch={(value) => {
+            setSearchQuery(value)
+            setCurrentPage(1)
+          }}
+          onSort={(columnKey, direction) => {
+            setSortKey(sortKeyMap[columnKey] ?? columnKey)
+            setSortOrder(direction)
+            setCurrentPage(1)
+          }}
+        />
+      )}
+
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Xác nhận xóa bài viết"
-        description={`Bạn có chắc chắn muốn xóa bài viết "${selectedItem?.title}"? Hành động này không thể hoàn tác.`}
+        description={`Bạn có chắc chắn muốn xóa bài viết "${selectedItem?.title}"?`}
         confirmText="Xóa bài viết"
         variant="danger"
         icon="delete"
-        onConfirm={() => {
-          setContentData((prev) => prev.filter((c) => c.id !== selectedItem?.id))
-          setDeleteDialogOpen(false)
-        }}
+        onConfirm={() => void handleConfirmDelete()}
       />
 
-      {/* Hide Confirmation Dialog */}
       <ConfirmDialog
         open={hideDialogOpen}
         onOpenChange={setHideDialogOpen}
-        title={
-          selectedItem?.status === "hidden"
-            ? "Xác nhận hiện bài viết"
-            : "Xác nhận ẩn bài viết"
-        }
+        title={selectedItem?.isVisible ? "Xác nhận ẩn bài viết" : "Xác nhận hiện bài viết"}
         description={
-          selectedItem?.status === "hidden"
-            ? `Bạn có chắc chắn muốn hiện lại bài viết "${selectedItem?.title}"?`
-            : `Bạn có chắc chắn muốn ẩn bài viết "${selectedItem?.title}"? Bài viết sẽ không hiển thị trên ứng dụng.`
+          selectedItem?.isVisible
+            ? `Bạn có chắc chắn muốn ẩn bài viết "${selectedItem?.title}"?`
+            : `Bạn có chắc chắn muốn hiện lại bài viết "${selectedItem?.title}"?`
         }
-        confirmText={selectedItem?.status === "hidden" ? "Hiện bài viết" : "Ẩn bài viết"}
+        confirmText={selectedItem?.isVisible ? "Ẩn bài viết" : "Hiện bài viết"}
         variant="warning"
         icon="hide"
         onConfirm={() => {
           if (selectedItem) {
-            handleToggleVisibility(selectedItem)
+            void handleToggleVisibility(selectedItem)
           }
           setHideDialogOpen(false)
         }}
